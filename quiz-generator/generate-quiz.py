@@ -1,6 +1,7 @@
 import json
 import pymongo
 import sys
+import random
 
 
 def openJsonConfig():
@@ -84,19 +85,29 @@ def selectTags(questions, tags):
 	return response
 
 
-def selectYear(questions, year):
+def selectQuestions(questions, size, maxSize):
     """
-    Iterates through an array of questions and returns a list of
-    questions that have been last used in the specified year.
-
+    Takes an array of questions, sorts them according to the creation
+    date and returns a random selection of 'size' questions from a
+    pool created with the first 'maxSize' sorted questions.
     :param questions: Array of questions stored in JSON
-    :param year: A number that indicates the year to be filtered
+    :param size: Number of returned questions
+    :param maxSize: Size of the random-selection pool
     :return: Filtered array of questions stored in JSON
     """
+    pool = []
     response = []
-    for itr in questions:
-        if itr["lastUsed"].year == year:
-            response.append(itr)
+
+    """
+    If the required number of returned questions is greater than the
+    total number of questions, we simply return the whole array.
+    """
+    if size >= len(questions):
+        return questions
+
+    pool = sorted(questions, key = lambda question: question["createdOn"], reverse = True)
+    response = random.sample(pool[0:maxSize], size)
+
     return response
 
 
