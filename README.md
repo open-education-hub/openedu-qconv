@@ -1,111 +1,155 @@
 # openedu-qconv
 Question format conversion and processing
-Quiz Manager manages quizzes designed to work with the [Quiz Manager Moodle Plugin](https://github.com/systems-cs-pub-ro/quiz-manager-moodle).
 
-## Requirements
+The Question Converter is used to manage [questions](https://github.com/open-education-hub/methodology/blob/main/chapters/develop-organize/drills/reading/questions.md).
+The main purpose is to convert questions from the `Storage Format` (i.e. Markdown for `Open-Education-Hub`, or any other format you might choose) to the `Deployment Format` (e.g. [`Moodle XML`](https://docs.moodle.org/402/en/Moodle_XML_format) if you use [`Moodle`](https://moodle.org/)).
 
-All the commands that install the prerequisites are found inside the [Makefile](./Makefile) `install` rule that can be run with the following command:
+The converter uses an intermediary `json` format, so if a new question format is needed, it can be easily added by providing the `newfmt_to_json()` and `json_to_newfmt()` functions.
 
-```sh
+# Requirements
+
+All the requirements are found in the [`Makefile`](/Makefile) and can be installed using:
+
+```console
 make install
 ```
 
-## Usage
+# Usage
 
-You can run the script using the following command:
+You can run the script with the following command:
 
-```sh
-python3 src/quiz_manager.py
+```console
+python3 src/question_converter.py
 ```
 
-`quiz_manager.py` has multiple subcommands.
-To find out more about each subcommand you can use the `--help` option.
+To get the full usage instructions, you can run:
 
-### Converting from one format to another
-
-For the moment, the quiz-manager supports conversions between three file types: `JSON`, `HR` and `MXML`.
-
-To convert a file from `$input_type` to `$output_type` run the following command:
-```sh
-python3 src/quiz_manager.py convert -i $input_file -o $output_file --input-format $input_type --output-format $output_type
+```console
+python3 src/question_converter.py convert --help
 ```
-The `--input_format` and `--output_format` arguments can be omitted only if the input / output file name contains a supported extension (eg. `.json`, `.hr` or `.mxml`)
+
+```
+Usage: quiz_manager.py convert [OPTIONS]
+
+  Converts files to different formats.
+
+Options:
+  -i, --input-file TEXT           Input file path
+  -d, --input-path TEXT           Input directory (read all `.input_format`
+                                  files from the input path)
+  -o, --output-file TEXT          Output file path
+  -od, --output-path TEXT          Output directory (write questions in
+                                  `Question_Title.output_format` files)
+  -if, --input-format [JSON|XML|MD]
+                                  The input format
+  -of, --output-format [JSON|XML|MD]
+                                  The output format
+  -c, --category TEXT             Category specifier for XML quizzes
+  --help                          Show this message and exit.
+```
+
+In order to specify input files, you can use the `--input-file` or the `--input-path` options.
+
+The `--input-file` option will expect the path to a file that contains one or multiple questions.
+In `Markdown`, multiple questions in the same file are separated by two empty lines.
+If you have multiple questions, one saved in each file, you can use the `--input-path` option.
+
+This will expect a path to a directory which contains multiple `.md`, `.xml` or `.json` questions.
+
+Similar to the input files, you can save the output in one file, using the `--output-file` option, or in a directory which will contain multiple files, each with one question, using the `--output-path` option.
+
+For example, if we want to convert to `Moodle XML` all the questions from the [`Operating Systems` class, the `app-interact` chapter](https://github.com/open-education-hub/operating-systems/tree/main/content/chapters/app-interact/lab/quiz), we will run:
+
+```console
+python3 src/question_converter.py convert --input-path <path-to-operating-systems-repo>/content/chapters/app-interact/lab/quiz/ --input-format md --output-file questions.xml
+```
+
+This will create the `questions.xml` file, that will contain all the questions from the `io/lab/quiz/` directory, converted to the `Moodle XML` format:
+
+```xml
+  [...]
+  <question type="multichoice">
+    <name>
+      <text>File Descriptor of `stderr`</text>
+    </name>
+    <questiontext format="markdown">
+      <text>Which file descriptor is associated by default to `stderr`?</text>
+    </questiontext>
+    <tags/>
+    <generalfeedback format="markdown">
+      <text/>
+    </generalfeedback>
+    <single>true</single>
+    <shuffleanswers>true</shuffleanswers>
+    <answer fraction="0" format="markdown">
+      <text>it varies from process to process</text>
+    </answer>
+    <answer fraction="0" format="markdown">
+      <text>it varies from one Linux distribution to another</text>
+    </answer>
+    <answer fraction="0" format="markdown">
+      <text>`stderr` has no associated file descriptor</text>
+    </answer>
+    <answer fraction="100.0" format="markdown">
+      <text>2</text>
+    </answer>
+    <answer fraction="0" format="markdown">
+      <text>0</text>
+    </answer>
+    <answer fraction="0" format="markdown">
+      <text>1</text>
+    </answer>
+  </question>
+  [...]
+```
+
+The `questions.xml` file can then be imported into Moodle and all the questions will be added to the question bank.
+
+If, on the other hand, we export some questions from Moodle, and we want to convert them to Markdown questions, we can use:
+
+```console
+python3 src/question_converter.py convert --input-file questions.xml --output-path test_output/ --output-format md
+```
+
+This will populate the `test_output/` directory with Markdown questions:
+
+```console
+$ ls -l test_output/
+total 96
+-rw-rw-r-- 1 user user  572 sep  8 11:14 Cause_of_bind_Error.md
+-rw-rw-r-- 1 user user  928 sep  8 11:14 Client-Server_Number_of_Copies.md
+-rw-rw-r-- 1 user user  657 sep  8 11:14 Deluge_TCP_or_UDP.md
+-rw-rw-r-- 1 user user  835 sep  8 11:14 Effect_of_execve_Syscall.md
+-rw-rw-r-- 1 user user 1179 sep  8 11:14 Fewer_than_Two_Copies.md
+-rw-rw-r-- 1 user user  279 sep  8 11:14 File_Descriptor_of_stderr.md
+-rw-rw-r-- 1 user user  234 sep  8 11:14 File_handler_in_C.md
+-rw-rw-r-- 1 user user 1240 sep  8 11:14 Firefox_TCP_or_UDP.md
+-rw-rw-r-- 1 user user  504 sep  8 11:14 Flush_Libc_Buffer.md
+-rw-rw-r-- 1 user user  616 sep  8 11:14 IO_Errors.md
+-rw-rw-r-- 1 user user  865 sep  8 11:14 Limitation_of_Anonymous_Pipes.md
+-rw-rw-r-- 1 user user  648 sep  8 11:14 mmap_vs_read_and_write_Benchmark.md
+-rw-rw-r-- 1 user user  607 sep  8 11:14 open_equivalent_of_fopen_w.md
+-rw-rw-r-- 1 user user  566 sep  8 11:14 O_TRUNC_Flag_Behaviour.md
+-rw-rw-r-- 1 user user 1967 sep  8 11:14 Pipe_Ends.md
+-rw-rw-r-- 1 user user  596 sep  8 11:14 printf_Under_Strace.md
+-rw-rw-r-- 1 user user  755 sep  8 11:14 Prints_Working_after_Closing_stdio.md
+-rw-rw-r-- 1 user user 2219 sep  8 11:14 Receiver_Socked_File_Descriptor.md
+-rw-rw-r-- 1 user user  783 sep  8 11:14 senderpy_and_receiverpy_Client-Server_Parallel.md
+-rw-rw-r-- 1 user user 2591 sep  8 11:14 Syscalls_Used_by_cp.md
+-rw-rw-r-- 1 user user  214 sep  8 11:14 Syscall_Used_by_fopen.md
+-rw-rw-r-- 1 user user  411 sep  8 11:14 write_filetxt_Permissions.md
+```
+
+You can see that the questions are saved in a file with the question name as the filename.
 
 ## Question Format
 
-Quiz Manager works with questions in a custom format, named *human-readable format*, or *hr*.
-These questions are to be created and stored in repositories specific to each class / course.
+The `Moodle XML` format is described in detail on the [`Moodle docs website`](https://docs.moodle.org/402/en/Moodle_XML_format).
+The Markdown format is described in the [methodology repository](https://github.com/open-education-hub/methodology/blob/main/chapters/develop-organize/drills/reading/questions.md).
 
-Each question in *hr* format consists of three parts:
+If you want to use the Markdown questions with Moodle (i.e. convert them to `Moodle XML`), few more rules need to be followed, or else the Moodle import will fail:
 
-1. the metadata
-1. the statement
-1. the answers
+- The `## Question Text` header **must** be present and **must not** be empty.
+- The `## Question Answers` header **must** be present and **must** contain at least one correct answer.
 
-Consider the sample question below:
-
-```
-created_on:2021-03-09;difficulty:1;topic:boot;
-Acronimul BIOS vine de la:
-- Brand Input/Output System
-+ Basic Input/Output System
-- Basic Input/Outstanding Source
-- Be Input/Output System
-```
-
-### Metadata
-
-The first line in the sample above is the metadata:
-
-```
-created_on:2021-03-09;difficulty:1;topic:boot;
-```
-
-It consists of key-value items defining properties of the question, in the format:
-
-```
-key1:value1;key2:value2;...;keyN:valueN;
-```
-
-If multiple values are assigned for a key, they will be separated by comma.
-
-Possible keys are:
-
-* `created_on` (**required**): question creation date; the format is `YYYY-MM-DD` (e.g. `2021-03-09` for March 9, 2021).
-* `topic` (**required**): chapter / topic for the question
-* `tags` (**optional**): keywords for the question content, more fine-grained than the chapter / topic
-* `difficulty` (**required**): a numeric value for the question difficulty; a higher number means a more difficult question
-
-**The metadata line must end with a semicolon (`;`).**
-
-Topics, tags and difficulty are specific to each class / course that uses Quiz Manager.
-
-### Statement
-
-The second line in the sample above is the statement:
-
-```
-Acronimul BIOS vine de la:
-```
-
-The statement is a character string delimited by the metadata line and the first answer line.
-That is, a statement may be single-line or multi-line (newlines may be part of the statement line).
-It ends when the first answer starts.
-
-### Answers
-
-The last four lines in the sample above are the answers:
-
-```
-- Brand Input/Output System
-+ Basic Input/Output System
-- Basic Input/Outstanding Source
-- Be Input/Output System
-```
-
-Each answer starts with `+ ` (`plus` and `blank`) for a correct answer or with `- ` (`minus` and `blank`) for a wrong answer.
-The actual answer is a character string following `+ ` or `- `.
-Answers may be single-line or multi-line.
-Answers are delimited by the next answer or by an empty line marking the start of the next question.
-
-The number of answers and the number of correct answers are specific to each class / course that uses Quiz Manager.
+All the other fields are optional.
