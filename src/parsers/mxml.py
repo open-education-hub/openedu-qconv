@@ -61,17 +61,17 @@ def quiz_json_to_mxml(json_arr: list, category: str = None) -> ElementTree.Eleme
     return pretty_xml
 
 
-def quiz_mxml_to_json(file_content: ElementTree.Element):
+def quiz_mxml_to_json(file_content: str):
     """
     Converts a MXML quiz to JSON quiz
     :param file_content: a quiz stored in MXML format
     :return: a quiz stored in JSON format
     """
     mxml_element_tree = ElementTree.fromstring(file_content)
-    return list(map(mxml_to_json, mxml_element_tree))
+    return '[' + ','.join(list(map(mxml_to_json, mxml_element_tree))) + ']'
 
 
-def json_to_mxml(json_question: str) -> ElementTree.Element:
+def json_to_mxml(json_question: dict) -> ElementTree.Element:
     """
     Generates the Moodle XML entry for the given question
 
@@ -80,16 +80,22 @@ def json_to_mxml(json_question: str) -> ElementTree.Element:
     :return: a quiz stored in MXML format containing json_question
     """
     # creating the hierarchy
-    json_obj = json.loads(json_question)
+    json_obj = json_question
     question = ElementTree.SubElement(ElementTree.Element("quiz"), "question")
     name_text = ElementTree.SubElement(ElementTree.SubElement(question, "name"), "text")
     question_text = ElementTree.SubElement(question, "questiontext")
     tags = ElementTree.SubElement(question, "tags")
     question_text_text = ElementTree.SubElement(question_text, "text")
     question.set("type", "multichoice")
-    question_text.set("format", "html")
-    question_text_text.text = json_obj["statement"][:-1]
-    name_text.text = json_obj["statement"][:-1]
+    question_text.set("format", "markdown")
+    question_text_text.text = json_obj["statement"].rstrip("\n")
+    name_text.text = json_obj["name"].rstrip("\n")
+
+    if "feedback" in json_obj:
+        question_feedback = ElementTree.SubElement(question, "generalfeedback")
+        question_feedback.set("format", "markdown")
+        question_feedback_text = ElementTree.SubElement(question_feedback, "text")
+        question_feedback_text.text = json_obj["feedback"].rstrip("\n")
 
     single = ElementTree.SubElement(question, "single")
     if json_obj["correct_answers_no"] > 1:
@@ -110,9 +116,9 @@ def json_to_mxml(json_question: str) -> ElementTree.Element:
     for json_answer in json_obj["answers"]:
         answer = ElementTree.SubElement(question, "answer")
         answer_text = ElementTree.SubElement(answer, "text")
-        answer_text.text = json_answer["statement"][:-1]
+        answer_text.text = json_answer["statement"].rstrip("\n")
         answer.set("fraction", str(json_answer["grade"] * 100))
-        answer.set("format", "html")
+        answer.set("format", "markdown")
 
     return question
 
@@ -126,7 +132,9 @@ def mxml_to_json(xml: ElementTree.Element) -> str:
     """
     # Template question to be completed with necessary info and returned
     question = {
+        "name": "",
         "statement": "",
+        "feedback": "",
         "metadata": {},
         "answers": [
             # {
@@ -140,10 +148,16 @@ def mxml_to_json(xml: ElementTree.Element) -> str:
 
     # Iterate through all elements of a single question
     for element in xml.iter("question"):
+        name = element.find("name").find("text").text
+        question["name"] = name
+
+        if element.find("generalfeedback") is not None:
+            question["feedback"] = element.find("generalfeedback").find("text").text
+
         if element.attrib["type"] == "multichoice":
             # Get question statement and assign it to dictionary
             statement = element.find("questiontext").find("text").text
-            question["statement"] = statement + "\n"
+            question["statement"] = statement
 
             if element.find("tags") is not None:
                 for tag in element.find("tags").iter("tag"):
@@ -159,7 +173,7 @@ def mxml_to_json(xml: ElementTree.Element) -> str:
                 if float(answer.attrib["fraction"]) > 0:
                     question["answers"].append(
                         {
-                            "statement": ans_statement + "\n",
+                            "statement": ans_statement,
                             "correct": True,
                             "grade": float(answer.attrib["fraction"]) / 100,
                         }
@@ -168,7 +182,7 @@ def mxml_to_json(xml: ElementTree.Element) -> str:
                 else:
                     question["answers"].append(
                         {
-                            "statement": ans_statement + "\n",
+                            "statement": ans_statement,
                             "correct": False,
                             "grade": float(answer.attrib["fraction"]) / 100,
                         }
