@@ -21,6 +21,18 @@ def get_meta(question_dict: dict, key: str):
         return question_dict["metadata"][key][0]
     return question_dict["metadata"][key]
 
+def set_meta(question_dict: dict, key: str, value: any):
+    """
+    Set metadata in question_dict
+    :param question_dict: dictionary that contains question metadata
+    :param key: the key that will be searched in the dictionary
+    :param value: the value that will be set in the dictionary
+    """
+    if key not in question_dict["metadata"]:
+        question_dict["metadata"][key] = []
+
+    question_dict["metadata"][key].append(value)
+
 def quiz_md_to_json(file_content: str):
     """
     Converts a MD quiz to JSON quiz
@@ -62,6 +74,11 @@ def json_to_md(json_obj: dict) -> str:
     if "feedback" in json_q and json_q["feedback"] is not None:
         md_q += "## Feedback\n\n"
         md_q += json_q["feedback"] + "\n\n"
+
+    if "metadata" in json_q:
+        md_q += "## Metadata\n\n"
+        for json_tag in json_q["metadata"]:
+            md_q += json_tag + "=" + str(get_meta(json_q, json_tag)) + "\n\n"
 
     return md_q + "\n"
 
@@ -111,5 +128,10 @@ def md_to_json(md_q: str) -> str:
                     )
         elif field_name == 'Feedback':
             question['feedback'] = '\n'.join(field.split('\n')[1:])
+        elif field_name == 'Metadata':
+            metas = field.rstrip('\n').split('\n')[1:]
+            for meta in metas:
+                tag_pair = meta.split("=")
+                set_meta(question, tag_pair[0], tag_pair[1])
 
     return json.dumps(question, indent=4)
