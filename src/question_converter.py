@@ -105,7 +105,7 @@ def convert(input_file_path, input_dir_path, output_file_path, output_dir_path, 
         for f in read_files:
             with open(f, "rb") as infile:
                 input_content += infile.read().decode("utf-8")
-            input_content += "\n\n"
+            input_content += "\n\n\n"
 
     input_content = input_content.rstrip("\n")
 
