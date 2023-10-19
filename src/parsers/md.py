@@ -123,9 +123,14 @@ def md_to_json(md_q: str) -> str:
                         {"statement": ans[2:], "correct": True, "grade": grade}
                     )
                 elif ans[0] == '-':
-                    question['answers'].append(
-                        {"statement": ans[2:], "correct": False, "grade": 0}
-                    )
+                    if question['correct_answers_no'] > 1:
+                        question['answers'].append(
+                            {"statement": ans[2:], "correct": False, "grade": -grade}
+                        )
+                    else:
+                        question['answers'].append(
+                            {"statement": ans[2:], "correct": False, "grade": 0}
+                        )
         elif field_name == 'Feedback':
             question['feedback'] = '\n'.join(field.split('\n')[1:])
         elif field_name == 'Metadata':
